@@ -6,11 +6,12 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Chargement de Wikipédia (Format Parquet - Garanti sans script)..."):
+    with st.spinner("Initialisation de la base (Méthode Direct Parquet)..."):
         try:
-            # Utilisation d'un dataset SANS script .py (format Parquet pur)
+            # On pointe directement sur les fichiers de données d'un export propre
+            # Cela évite que la bibliothèque ne cherche un script de chargement .py
             dataset = load_dataset(
-                "dis_is_fine/wikipedia-fr-cleaned", 
+                "remi-dupre/wikipedia-fr-20231101-parquet", 
                 split="train", 
                 streaming=True
             )
@@ -19,8 +20,7 @@ def remplir_base():
             for i, entry in enumerate(dataset):
                 if i >= 150: break 
                 
-                # Dans ce dataset, les colonnes s'appellent 'text' et 'title'
-                text_content = entry.get("text") or ""
+                text_content = entry.get("text") or entry.get("content") or ""
                 title_content = entry.get("title") or "Sans titre"
                 
                 if text_content:
@@ -30,14 +30,14 @@ def remplir_base():
             
             if docs:
                 collection.add(ids=ids, documents=docs, metadatas=metas)
-                st.success(f"Base initialisée avec {len(docs)} articles !")
+                st.success(f"Félicitations ! Base initialisée avec {len(docs)} articles.")
                 st.rerun()
             else:
-                st.error("Le dataset semble vide.")
+                st.error("Échec : Le fichier de données est vide.")
                 
         except Exception as e:
-            st.error(f"Erreur : {str(e)}")
-            st.info("Ce dataset est en format Parquet et devrait contourner l'erreur wikipedia.py")
+            st.error(f"Erreur de chargement : {str(e)}")
+            st.info("Vérifiez la connexion réseau du serveur Streamlit.")
 
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
