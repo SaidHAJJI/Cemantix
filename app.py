@@ -63,7 +63,11 @@ def load_models():
     # Configuration Gemini
     api_key = os.getenv("GEMINI_API_KEY")
     genai.configure(api_key=api_key)
-    llm = genai.GenerativeModel('gemini-1.5-flash')
+    # Au lieu de :
+# llm = genai.GenerativeModel('gemini-1.5-flash')
+
+# Essayez le nom standard :
+    llm = genai.GenerativeModel('gemini-1.5-flash-latest')
     return embed_model, reranker, llm
 
 embed_model, reranker, llm = load_models()
