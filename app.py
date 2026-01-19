@@ -6,12 +6,11 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Chargement de Wikipédia (Format Parquet sécurisé)..."):
+    with st.spinner("Chargement de Wikipédia (Format Parquet - Garanti sans script)..."):
         try:
-            # On utilise une source moderne sans script Python
+            # Utilisation d'un dataset SANS script .py (format Parquet pur)
             dataset = load_dataset(
-                "graelo/wikipedia", 
-                "20231101.fr", 
+                "dis_is_fine/wikipedia-fr-cleaned", 
                 split="train", 
                 streaming=True
             )
@@ -20,25 +19,25 @@ def remplir_base():
             for i, entry in enumerate(dataset):
                 if i >= 150: break 
                 
-                # Extraction propre du contenu
-                content = entry.get("text") or ""
-                title = entry.get("title") or "Sans titre"
+                # Dans ce dataset, les colonnes s'appellent 'text' et 'title'
+                text_content = entry.get("text") or ""
+                title_content = entry.get("title") or "Sans titre"
                 
-                if content:
-                    docs.append(content[:1000]) # On limite la taille pour le test
+                if text_content:
+                    docs.append(text_content[:1000])
                     ids.append(f"id_{i}")
-                    metas.append({"title": title})
+                    metas.append({"title": title_content})
             
             if docs:
                 collection.add(ids=ids, documents=docs, metadatas=metas)
                 st.success(f"Base initialisée avec {len(docs)} articles !")
                 st.rerun()
             else:
-                st.error("Aucune donnée extraite du dataset.")
+                st.error("Le dataset semble vide.")
                 
         except Exception as e:
-            st.error(f"Erreur critique : {str(e)}")
-            st.info("Astuce : Vérifiez que 'datasets>=2.16.0' est dans requirements.txt")
+            st.error(f"Erreur : {str(e)}")
+            st.info("Ce dataset est en format Parquet et devrait contourner l'erreur wikipedia.py")
 
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
