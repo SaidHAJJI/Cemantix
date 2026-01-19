@@ -1,8 +1,48 @@
 import streamlit as st
+from datasets import load_dataset
 import os
 import chromadb
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
+
+def remplir_base():
+    with st.spinner("Téléchargement et indexation de Wikipédia..."):
+        # On charge un échantillon un peu plus grand pour être sûr d'avoir des résultats
+        dataset = load_dataset("wikipedia", "20220301.fr", split="train", streaming=True)
+        
+        docs, ids, metas = [], [], []
+        for i, entry in enumerate(dataset):
+            if i >= 200: break 
+            docs.append(entry["text"][:1000])
+            ids.append(f"id_{i}")
+            metas.append({"title": entry["title"]})
+        
+        collection.add(ids=ids, documents=docs, metadatas=metas)
+        st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
+
+# --- CONNEXION CHROMADB ---
+client = chromadb.PersistentClient(path="./chroma_db_wiki")
+collection = client.get_or_create_collection(name="wiki_fr_expert")
+
+# --- GESTION DU BOUTON RESET ---
+with st.sidebar:
+    st.header("Gestion des données")
+    if st.button("Ré-indexer (Reset)"):
+        # On supprime et on recrée la collection
+        client.delete_collection(name="wiki_fr_expert")
+        collection = client.create_collection(name="wiki_fr_expert")
+        remplir_base()
+        st.rerun() # Relance l'application pour mettre à jour l'affichage
+
+    # Vérification automatique si vide
+    count = collection.count()
+    st.info(f"Documents en base : {count}")
+    
+    if count == 0:
+        if st.button("Initialiser la base"):
+            remplir_base()
+            st.rerun()
+
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Wiki RAG Explorer", page_icon="📚", layout="wide")
@@ -20,21 +60,9 @@ def load_models():
 
 embed_model, reranker, llm = load_models()
 
-# --- CONNEXION CHROMADB ---
-client = chromadb.PersistentClient(path="./chroma_db_wiki")
-collection = client.get_or_create_collection(name="wiki_fr_expert")
-
 # --- INTERFACE UTILISATEUR ---
 st.title("📚 Assistant Expert Wikipédia (RAG + Rerank)")
 st.markdown("Posez une question sur les documents indexés dans votre base locale.")
-
-with st.sidebar:
-    st.header("Paramètres")
-    n_results = st.slider("Nombre de documents à extraire", 5, 20, 10)
-    st.info(f"Documents en base : {collection.count()}")
-    if st.button("Ré-indexer (Reset)"):
-        # Logique pour vider/remplir la base si besoin
-        pass
 
 # --- ZONE DE RECHERCHE ---
 question = st.text_input("Votre question :", placeholder="Ex: Qui a fondé Carthage ?")
