@@ -51,6 +51,13 @@ if question:
         scores = reranker.predict(pairs)
         
         scored = sorted(zip(scores, candidats, metas), key=lambda x: x[0], reverse=True)
+        # ... après le calcul de 'scored'
+        if len(scored) > 0:
+            top_score, top_text, top_meta = scored[0]
+            # ... reste du code de génération
+        else:
+            st.error("Aucun document pertinent n'a été trouvé dans la base de données.")
+            st.stop() # Arrête le script proprement pour cette exécution
         top_score, top_text, top_meta = scored[0]
 
         # 3. Génération Gemini
