@@ -7,8 +7,14 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
     with st.spinner("Téléchargement et indexation de Wikipédia..."):
-        # On charge un échantillon un peu plus grand pour être sûr d'avoir des résultats
-        dataset = load_dataset("wikipedia", "20220301.fr", split="train", streaming=True)
+        # AJOUT de trust_remote_code=True ici :
+        dataset = load_dataset(
+            "wikipedia", 
+            "20220301.fr", 
+            split="train", 
+            streaming=True, 
+            trust_remote_code=True
+        )
         
         docs, ids, metas = [], [], []
         for i, entry in enumerate(dataset):
@@ -19,7 +25,7 @@ def remplir_base():
         
         collection.add(ids=ids, documents=docs, metadatas=metas)
         st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
-
+        
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
 collection = client.get_or_create_collection(name="wiki_fr_expert")
