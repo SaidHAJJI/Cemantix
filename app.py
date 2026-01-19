@@ -6,9 +6,9 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Chargement des données Wikipédia (Format Parquet - Sécurisé)..."):
+    with st.spinner("Chargement de Wikipédia (Format Parquet sécurisé)..."):
         try:
-            # On change la source pour un format sans script .py
+            # On utilise une source moderne sans script Python
             dataset = load_dataset(
                 "graelo/wikipedia", 
                 "20231101.fr", 
@@ -18,20 +18,27 @@ def remplir_base():
             
             docs, ids, metas = [], [], []
             for i, entry in enumerate(dataset):
-                if i >= 100: break 
-                # On récupère le texte et le titre de manière sécurisée
-                text_content = entry.get("text") or ""
-                title_content = entry.get("title") or "Sans titre"
+                if i >= 150: break 
                 
-                docs.append(text_content[:1000])
-                ids.append(f"id_{i}")
-                metas.append({"title": title_content})
+                # Extraction propre du contenu
+                content = entry.get("text") or ""
+                title = entry.get("title") or "Sans titre"
+                
+                if content:
+                    docs.append(content[:1000]) # On limite la taille pour le test
+                    ids.append(f"id_{i}")
+                    metas.append({"title": title})
             
-            # Ajout à la collection ChromaDB
-            collection.add(ids=ids, documents=docs, metadatas=metas)
-            st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
+            if docs:
+                collection.add(ids=ids, documents=docs, metadatas=metas)
+                st.success(f"Base initialisée avec {len(docs)} articles !")
+                st.rerun()
+            else:
+                st.error("Aucune donnée extraite du dataset.")
+                
         except Exception as e:
-            st.error(f"Erreur lors du chargement : {str(e)}")
+            st.error(f"Erreur critique : {str(e)}")
+            st.info("Astuce : Vérifiez que 'datasets>=2.16.0' est dans requirements.txt")
 
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
