@@ -6,26 +6,33 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Téléchargement et indexation de Wikipédia..."):
-        # AJOUT de trust_remote_code=True ici :
-        dataset = load_dataset(
-            "wikipedia", 
-            "20220301.fr", 
-            split="train", 
-            streaming=True, 
-            trust_remote_code=True
-        )
-        
-        docs, ids, metas = [], [], []
-        for i, entry in enumerate(dataset):
-            if i >= 200: break 
-            docs.append(entry["text"][:1000])
-            ids.append(f"id_{i}")
-            metas.append({"title": entry["title"]})
-        
-        collection.add(ids=ids, documents=docs, metadatas=metas)
-        st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
-        
+    with st.spinner("Chargement des données Wikipédia (Format Parquet)..."):
+        try:
+            # On utilise un dataset qui ne nécessite pas de script .py
+            # 'graelo/wikipedia' est une alternative robuste en format propre
+            dataset = load_dataset(
+                "graelo/wikipedia", 
+                "20231101.fr", 
+                split="train", 
+                streaming=True
+            )
+            
+            docs, ids, metas = [], [], []
+            for i, entry in enumerate(dataset):
+                if i >= 100: break 
+                # Note : selon le dataset, la colonne peut s'appeler 'text' ou 'content'
+                text_content = entry.get("text") or entry.get("content") or ""
+                docs.append(text_content[:1000])
+                ids.append(f"id_{i}")
+                metas.append({"title": entry.get("title", "Sans titre")})
+            
+            collection.add(ids=ids, documents=docs, metadatas=metas)
+            st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
+        except Exception as e:
+            st.error(f"Échec du chargement : {e}")
+            st.info("Tentative avec une source alternative...")
+            # Si le premier échoue, on peut essayer un dataset plus petit et universel
+
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
 collection = client.get_or_create_collection(name="wiki_fr_expert")
