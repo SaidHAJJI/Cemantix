@@ -32,15 +32,18 @@ collection = client.get_or_create_collection(name="wiki_fr_expert")
 
 # --- GESTION DU BOUTON RESET ---
 with st.sidebar:
-    st.header("Gestion des données")
+    st.header("Paramètres de recherche")
+    # On limite le max au nombre de documents réellement présents (minimum 1)
+    max_docs = max(1, collection.count())
+    n_results = st.slider("Nombre de documents à extraire", 1, min(max_docs, 10), min(max_docs, 3))
+    # ------------------
+
     if st.button("Ré-indexer (Reset)"):
-        # On supprime et on recrée la collection
         client.delete_collection(name="wiki_fr_expert")
         collection = client.create_collection(name="wiki_fr_expert")
         remplir_base()
-        st.rerun() # Relance l'application pour mettre à jour l'affichage
+        st.rerun()
 
-    # Vérification automatique si vide
     count = collection.count()
     st.info(f"Documents en base : {count}")
     
@@ -48,7 +51,6 @@ with st.sidebar:
         if st.button("Initialiser la base"):
             remplir_base()
             st.rerun()
-
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Wiki RAG Explorer", page_icon="📚", layout="wide")
@@ -75,12 +77,18 @@ question = st.text_input("Votre question :", placeholder="Ex: Qui a fondé Carth
 
 if question:
     with st.spinner("Recherche et analyse en cours..."):
-        # 1. Retrieval
+        # 1. Retrieval (On utilise n_results défini dans la sidebar)
         results = collection.query(query_texts=[question], n_results=n_results)
         
-        # 2. Reranking
-        candidats = results['documents'][0]
-        metas = results['metadatas'][0]
+        # Vérification de sécurité pour éviter l'erreur "index out of range"
+        if not results['documents'] or len(results['documents'][0]) == 0:
+            st.warning("Désolé, aucun document dans la base ne semble correspondre à votre question.")
+        else:
+            # 2. Reranking
+            candidats = results['documents'][0]
+            metas = results['metadatas'][0]
+            
+            # ... suite de votre code (CrossEncoder, Gemini, etc.)
         pairs = [[question, c] for c in candidats]
         scores = reranker.predict(pairs)
         
