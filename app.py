@@ -6,10 +6,9 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Chargement des données Wikipédia (Format Parquet)..."):
+    with st.spinner("Chargement des données Wikipédia (Format Parquet - Sécurisé)..."):
         try:
-            # On utilise un dataset qui ne nécessite pas de script .py
-            # 'graelo/wikipedia' est une alternative robuste en format propre
+            # On change la source pour un format sans script .py
             dataset = load_dataset(
                 "graelo/wikipedia", 
                 "20231101.fr", 
@@ -20,18 +19,19 @@ def remplir_base():
             docs, ids, metas = [], [], []
             for i, entry in enumerate(dataset):
                 if i >= 100: break 
-                # Note : selon le dataset, la colonne peut s'appeler 'text' ou 'content'
-                text_content = entry.get("text") or entry.get("content") or ""
+                # On récupère le texte et le titre de manière sécurisée
+                text_content = entry.get("text") or ""
+                title_content = entry.get("title") or "Sans titre"
+                
                 docs.append(text_content[:1000])
                 ids.append(f"id_{i}")
-                metas.append({"title": entry.get("title", "Sans titre")})
+                metas.append({"title": title_content})
             
+            # Ajout à la collection ChromaDB
             collection.add(ids=ids, documents=docs, metadatas=metas)
             st.success(f"Indexation réussie : {len(docs)} documents ajoutés !")
         except Exception as e:
-            st.error(f"Échec du chargement : {e}")
-            st.info("Tentative avec une source alternative...")
-            # Si le premier échoue, on peut essayer un dataset plus petit et universel
+            st.error(f"Erreur lors du chargement : {str(e)}")
 
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
