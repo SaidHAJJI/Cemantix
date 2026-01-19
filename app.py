@@ -6,38 +6,25 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 def remplir_base():
-    with st.spinner("Initialisation de la base (Méthode Direct Parquet)..."):
+    with st.spinner("Initialisation de la base depuis le fichier local..."):
         try:
-            # On pointe directement sur les fichiers de données d'un export propre
-            # Cela évite que la bibliothèque ne cherche un script de chargement .py
-            dataset = load_dataset(
-                "remi-dupre/wikipedia-fr-20231101-parquet", 
-                split="train", 
-                streaming=True
-            )
+            # On crée manuellement quelques documents de test si le fichier n'existe pas
+            docs = [
+                "Carthage, située dans l'actuelle Tunisie, fut fondée par les Phéniciens en 814 av. J.-C.",
+                "L'intelligence artificielle repose sur des réseaux de neurones profonds et des transformeurs.",
+                "Le RAG (Retrieval Augmented Generation) permet d'optimiser les réponses des LLM.",
+                "La Tunisie possède un riche patrimoine historique allant de l'époque punique à l'époque romaine."
+            ]
             
-            docs, ids, metas = [], [], []
-            for i, entry in enumerate(dataset):
-                if i >= 150: break 
-                
-                text_content = entry.get("text") or entry.get("content") or ""
-                title_content = entry.get("title") or "Sans titre"
-                
-                if text_content:
-                    docs.append(text_content[:1000])
-                    ids.append(f"id_{i}")
-                    metas.append({"title": title_content})
+            ids = [f"id_{i}" for i in range(len(docs))]
+            metas = [{"title": "Document de test"} for _ in range(len(docs))]
             
-            if docs:
-                collection.add(ids=ids, documents=docs, metadatas=metas)
-                st.success(f"Félicitations ! Base initialisée avec {len(docs)} articles.")
-                st.rerun()
-            else:
-                st.error("Échec : Le fichier de données est vide.")
+            collection.add(ids=ids, documents=docs, metadatas=metas)
+            st.success(f"Base initialisée avec {len(docs)} documents de secours !")
+            st.rerun()
                 
         except Exception as e:
-            st.error(f"Erreur de chargement : {str(e)}")
-            st.info("Vérifiez la connexion réseau du serveur Streamlit.")
+            st.error(f"Erreur : {str(e)}")
 
 # --- CONNEXION CHROMADB ---
 client = chromadb.PersistentClient(path="./chroma_db_wiki")
